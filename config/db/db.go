@@ -3,41 +3,57 @@ package config
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-sql-driver/mysql"
 
 	env "github.com/jhamayank02/AQI-Route-Optimizer/config/env"
 )
 
-var DB *sql.DB
-
-func init() {
-	fmt.Println("Initializing db configuration...")
-	DB, err := setupDB()
-	if err != nil {
-		fmt.Println("Error initializing db:", err)
-	}
-	fmt.Println("Db initialized successfully", DB)
+type DBConfig struct {
+	DB *sql.DB
 }
 
-func setupDB() (*sql.DB, error) {
-	cfg := mysql.NewConfig()
-	cfg.User = env.GetString("DB_USER", "root")
-	cfg.Passwd = env.GetString("DB_PASSWORD", "root")
-	cfg.Net = env.GetString("DB_NETWORK", "tcp")
-	cfg.Addr = env.GetString("DB_ADDRESS", "127.0.0.1:3306")
-	cfg.DBName = env.GetString("DB_NAME", "api_route_optimizer")
+func NewDBConfig(logger *slog.Logger) (*DBConfig, error) {
+	logger.Info("initializing database")
 
-	fmt.Println("Connecting to db", cfg.DBName, cfg.FormatDSN())
-
-	db, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil || db == nil {
+	db, err := setupDB(logger)
+	if err != nil {
+		logger.Error("failed to initialize database",
+			"error", err,
+		)
 		return nil, err
 	}
 
-	pingErr := db.Ping()
-	if pingErr != nil {
-		return nil, pingErr
+	logger.Info("database initialized successfully")
+
+	return &DBConfig{
+		DB: db,
+	}, nil
+}
+
+func setupDB(logger *slog.Logger) (*sql.DB, error) {
+	cfg := mysql.NewConfig()
+	cfg.User = env.GetString("DB_USER", "root", logger)
+	cfg.Passwd = env.GetString("DB_PASSWORD", "root", logger)
+	cfg.Net = env.GetString("DB_NETWORK", "tcp", logger)
+	cfg.Addr = env.GetString("DB_ADDRESS", "127.0.0.1:3306", logger)
+	cfg.DBName = env.GetString("DB_NAME", "api_route_optimizer", logger)
+
+	logger.Debug("connecting to database",
+		"database", cfg.DBName,
+		"address", cfg.Addr,
+	)
+
+	db, err := sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		logger.Error("open mysql connection", "error", err)
+		return nil, fmt.Errorf("open mysql connection: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		logger.Error("ping mysql database", "error", err)
+		return nil, fmt.Errorf("ping mysql database: %w", err)
 	}
 
 	return db, nil

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	db "github.com/jhamayank02/AQI-Route-Optimizer/config/db"
@@ -12,8 +13,8 @@ type Config struct {
 	Addr string
 }
 
-func NewConfig() Config {
-	port := env.GetString("PORT", ":8080")
+func NewConfig(logger *slog.Logger) Config {
+	port := env.GetString("PORT", ":8080", logger)
 	return Config{
 		Addr: port,
 	}
@@ -21,16 +22,22 @@ func NewConfig() Config {
 
 type App struct {
 	config Config
+	logger *slog.Logger
 }
 
-func NewApp(cfg Config) App {
+func NewApp(cfg Config, logger *slog.Logger) App {
 	return App{
 		config: cfg,
+		logger: logger,
 	}
 }
 
 func (app *App) Run() error {
-	db := db.DB
+	db, err := db.NewDBConfig(app.logger)
+	if err != nil {
+		app.logger.Error("failed to initialize db", "error", err)
+		return err
+	}
 
 	fmt.Println("app.go", db)
 
