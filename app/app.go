@@ -1,12 +1,12 @@
 package app
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
-	db "github.com/jhamayank02/AQI-Route-Optimizer/config/db"
+	"github.com/gin-gonic/gin"
 	env "github.com/jhamayank02/AQI-Route-Optimizer/config/env"
+	"github.com/jhamayank02/AQI-Route-Optimizer/router"
 )
 
 type Config struct {
@@ -33,16 +33,21 @@ func NewApp(cfg Config, logger *slog.Logger) App {
 }
 
 func (app *App) Run() error {
-	db, err := db.NewDBConfig(app.logger)
-	if err != nil {
-		app.logger.Error("failed to initialize db", "error", err)
-		return err
-	}
+	// db, err := db.NewDBConfig(app.logger)
+	// if err != nil {
+	// 	app.logger.Error("failed to initialize db", "error", err)
+	// 	return err
+	// }
 
-	fmt.Println("app.go", db)
+	// Initialize gin router
+	r := gin.Default()
+
+	// Register routes
+	router.Register(r)
 
 	server := &http.Server{
-		Addr: app.config.Addr,
+		Addr:    app.config.Addr,
+		Handler: r,
 	}
 	return server.ListenAndServe()
 }
