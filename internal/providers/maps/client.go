@@ -87,11 +87,16 @@ func NewClient(logger *slog.Logger, apiKey string, findRouteURL string, searchLo
 	}
 }
 
-func (c *Client) FindRoute(ctx context.Context, start domain.Coordinates, dest domain.Coordinates) (*domain.Route, error) {
+func (c *Client) FindRoutes(ctx context.Context, start domain.Coordinates, dest domain.Coordinates) ([]domain.Route, error) {
 	payload := map[string]any{
 		"coordinates": [][]float64{
 			{start.Lng, start.Lat},
 			{dest.Lng, dest.Lat},
+		},
+		"alternative_routes": map[string]any{
+			"target_count":  3,
+			"share_factor":  0.6,
+			"weight_factor": 1.4,
 		},
 	}
 
@@ -133,24 +138,28 @@ func (c *Client) FindRoute(ctx context.Context, start domain.Coordinates, dest d
 		return nil, fmt.Errorf("no route features returned")
 	}
 
-	feature := orsResp.Features[0]
-	coordinates := make([]domain.Coordinates, 0, len(feature.Geometry.Coordinates))
-	for _, item := range feature.Geometry.Coordinates {
-		if len(item) < 2 {
-			continue
+	routes := make([]domain.Route, 0, len(orsResp.Features))
+	for _, feature := range orsResp.Features {
+		coordinates := make([]domain.Coordinates, 0, len(feature.Geometry.Coordinates))
+		for _, item := range feature.Geometry.Coordinates {
+			if len(item) < 2 {
+				continue
+			}
+
+			coordinates = append(coordinates, domain.Coordinates{
+				Lng: item[0],
+				Lat: item[1],
+			})
 		}
 
-		coordinates = append(coordinates, domain.Coordinates{
-			Lng: item[0],
-			Lat: item[1],
+		routes = append(routes, domain.Route{
+			DistanceKM:      feature.Properties.Summary.Distance / 1000,
+			DurationMinutes: feature.Properties.Summary.Duration / 60,
+			Coordinates:     coordinates,
 		})
 	}
 
-	return &domain.Route{
-		DistanceKM:      feature.Properties.Summary.Distance / 1000,
-		DurationMinutes: feature.Properties.Summary.Duration / 60,
-		Coordinates:     coordinates,
-	}, nil
+	return routes, nil
 }
 
 func (c *Client) SearchLocation(query string) ([]domain.LocationSuggestion, error) {

@@ -2,8 +2,10 @@ package routeplanner
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"math"
+	"sort"
 
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/domain"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/aqi"
@@ -25,11 +27,42 @@ func NewService(logger *slog.Logger, mapClient *maps.Client, aqiClient *aqi.Clie
 }
 
 func (s *Service) Recommend(ctx context.Context, req domain.RouteRequest) (*domain.RouteRecommendation, error) {
-	route, err := s.mapClient.FindRoute(ctx, req.Source(), req.Destination())
+	routes, err := s.mapClient.FindRoutes(ctx, req.Source(), req.Destination())
 	if err != nil {
 		return nil, err
 	}
 
+	evaluatedRoutes := make([]domain.EvaluatedRoute, 0, len(routes))
+	for _, route := range routes {
+		evaluatedRoute, err := s.evaluateRoute(ctx, route)
+		if err != nil {
+			return nil, err
+		}
+		evaluatedRoutes = append(evaluatedRoutes, evaluatedRoute)
+	}
+
+	sort.SliceStable(evaluatedRoutes, func(i int, j int) bool {
+		if evaluatedRoutes[i].RouteScore == evaluatedRoutes[j].RouteScore {
+			return evaluatedRoutes[i].Route.DurationMinutes < evaluatedRoutes[j].Route.DurationMinutes
+		}
+		return evaluatedRoutes[i].RouteScore > evaluatedRoutes[j].RouteScore
+	})
+
+	if len(evaluatedRoutes) == 0 {
+		return nil, fmt.Errorf("no routes available to evaluate")
+	}
+
+	evaluatedRoutes[0].IsSelected = true
+	evaluatedRoutes[0].SelectionReason = "selected because it has the best combined AQI and travel-time score"
+
+	return &domain.RouteRecommendation{
+		SelectedRouteIndex: 0,
+		SelectedRoute:      evaluatedRoutes[0],
+		AllRoutes:          evaluatedRoutes,
+	}, nil
+}
+
+func (s *Service) evaluateRoute(ctx context.Context, route domain.Route) (domain.EvaluatedRoute, error) {
 	samples := sampleCoordinates(route.Coordinates, 8)
 	aqiSamples := make([]domain.AQISample, 0, len(samples))
 
@@ -39,7 +72,7 @@ func (s *Service) Recommend(ctx context.Context, req domain.RouteRequest) (*doma
 	for _, coordinate := range samples {
 		aqiValue, err := s.aqiClient.GetAQI(ctx, coordinate.Lat, coordinate.Lng)
 		if err != nil {
-			return nil, err
+			return domain.EvaluatedRoute{}, err
 		}
 
 		total += aqiValue
@@ -57,14 +90,12 @@ func (s *Service) Recommend(ctx context.Context, req domain.RouteRequest) (*doma
 		averageAQI = total / float64(len(aqiSamples))
 	}
 
-	score := calculateScore(averageAQI, route.DurationMinutes)
-
-	return &domain.RouteRecommendation{
-		Route:            *route,
+	return domain.EvaluatedRoute{
+		Route:            route,
 		AQISamples:       aqiSamples,
 		AverageAQI:       averageAQI,
 		MaxAQI:           maxAQI,
-		RouteScore:       score,
+		RouteScore:       calculateScore(averageAQI, route.DurationMinutes),
 		Recommendation:   recommendationText(averageAQI),
 		SamplingStrategy: "evenly distributed points across the route polyline",
 	}, nil

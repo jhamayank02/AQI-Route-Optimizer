@@ -27,7 +27,7 @@ type AQISample struct {
 	AQI float64 `json:"aqi"`
 }
 
-type RouteRecommendation struct {
+type EvaluatedRoute struct {
 	Route            Route       `json:"route"`
 	AQISamples       []AQISample `json:"aqi_samples"`
 	AverageAQI       float64     `json:"average_aqi"`
@@ -35,4 +35,12 @@ type RouteRecommendation struct {
 	RouteScore       float64     `json:"route_score"`
 	Recommendation   string      `json:"recommendation"`
 	SamplingStrategy string      `json:"sampling_strategy"`
+	IsSelected       bool        `json:"is_selected"`
+	SelectionReason  string      `json:"selection_reason,omitempty"`
+}
+
+type RouteRecommendation struct {
+	SelectedRouteIndex int              `json:"selected_route_index"`
+	SelectedRoute      EvaluatedRoute   `json:"selected_route"`
+	AllRoutes          []EvaluatedRoute `json:"all_routes"`
 }
