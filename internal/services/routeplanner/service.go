@@ -1,0 +1,110 @@
+package routeplanner
+
+import (
+	"context"
+	"log/slog"
+	"math"
+
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/domain"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/aqi"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/maps"
+)
+
+type Service struct {
+	logger    *slog.Logger
+	mapClient *maps.Client
+	aqiClient *aqi.Client
+}
+
+func NewService(logger *slog.Logger, mapClient *maps.Client, aqiClient *aqi.Client) *Service {
+	return &Service{
+		logger:    logger,
+		mapClient: mapClient,
+		aqiClient: aqiClient,
+	}
+}
+
+func (s *Service) Recommend(ctx context.Context, req domain.RouteRequest) (*domain.RouteRecommendation, error) {
+	route, err := s.mapClient.FindRoute(ctx, req.Source(), req.Destination())
+	if err != nil {
+		return nil, err
+	}
+
+	samples := sampleCoordinates(route.Coordinates, 8)
+	aqiSamples := make([]domain.AQISample, 0, len(samples))
+
+	var total float64
+	var maxAQI float64
+
+	for _, coordinate := range samples {
+		aqiValue, err := s.aqiClient.GetAQI(ctx, coordinate.Lat, coordinate.Lng)
+		if err != nil {
+			return nil, err
+		}
+
+		total += aqiValue
+		maxAQI = math.Max(maxAQI, aqiValue)
+
+		aqiSamples = append(aqiSamples, domain.AQISample{
+			Lat: coordinate.Lat,
+			Lng: coordinate.Lng,
+			AQI: aqiValue,
+		})
+	}
+
+	averageAQI := 0.0
+	if len(aqiSamples) > 0 {
+		averageAQI = total / float64(len(aqiSamples))
+	}
+
+	score := calculateScore(averageAQI, route.DurationMinutes)
+
+	return &domain.RouteRecommendation{
+		Route:            *route,
+		AQISamples:       aqiSamples,
+		AverageAQI:       averageAQI,
+		MaxAQI:           maxAQI,
+		RouteScore:       score,
+		Recommendation:   recommendationText(averageAQI),
+		SamplingStrategy: "evenly distributed points across the route polyline",
+	}, nil
+}
+
+func calculateScore(averageAQI float64, durationMinutes float64) float64 {
+	aqiPenalty := math.Min(averageAQI, 300) / 3
+	durationPenalty := math.Min(durationMinutes, 180) / 6
+	score := 100 - aqiPenalty - durationPenalty
+	if score < 0 {
+		return 0
+	}
+	return math.Round(score*100) / 100
+}
+
+func recommendationText(averageAQI float64) string {
+	switch {
+	case averageAQI <= 50:
+		return "good air quality along most of the route"
+	case averageAQI <= 100:
+		return "moderate air quality; acceptable for most users"
+	case averageAQI <= 150:
+		return "unhealthy for sensitive groups; use caution"
+	default:
+		return "poor air quality; consider delaying travel or using protection"
+	}
+}
+
+func sampleCoordinates(points []domain.Coordinates, limit int) []domain.Coordinates {
+	if len(points) <= limit || limit <= 0 {
+		return points
+	}
+
+	samples := make([]domain.Coordinates, 0, limit)
+	lastIndex := len(points) - 1
+
+	for i := 0; i < limit; i++ {
+		index := int(math.Round(float64(i*lastIndex) / float64(limit-1)))
+		samples = append(samples, points[index])
+	}
+
+	return samples
+}

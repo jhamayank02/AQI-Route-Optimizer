@@ -6,8 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/go-sql-driver/mysql"
-
-	env "github.com/jhamayank02/AQI-Route-Optimizer/config/env"
 )
 
 type DBConfig struct {
@@ -19,9 +17,7 @@ func NewDBConfig(logger *slog.Logger) (*DBConfig, error) {
 
 	db, err := setupDB(logger)
 	if err != nil {
-		logger.Error("failed to initialize database",
-			"error", err,
-		)
+		logger.Error("failed to initialize database", "error", err)
 		return nil, err
 	}
 
@@ -34,16 +30,13 @@ func NewDBConfig(logger *slog.Logger) (*DBConfig, error) {
 
 func setupDB(logger *slog.Logger) (*sql.DB, error) {
 	cfg := mysql.NewConfig()
-	cfg.User = env.GetString("DB_USER", "root", logger)
-	cfg.Passwd = env.GetString("DB_PASSWORD", "root", logger)
-	cfg.Net = env.GetString("DB_NETWORK", "tcp", logger)
-	cfg.Addr = env.GetString("DB_ADDRESS", "127.0.0.1:3306", logger)
-	cfg.DBName = env.GetString("DB_NAME", "api_route_optimizer", logger)
+	cfg.User = GetString("DB_USER", "root", logger)
+	cfg.Passwd = GetString("DB_PASSWORD", "root", logger)
+	cfg.Net = GetString("DB_NETWORK", "tcp", logger)
+	cfg.Addr = GetString("DB_ADDRESS", "127.0.0.1:3306", logger)
+	cfg.DBName = GetString("DB_NAME", "api_route_optimizer", logger)
 
-	logger.Debug("connecting to database",
-		"database", cfg.DBName,
-		"address", cfg.Addr,
-	)
+	logger.Debug("connecting to database", "database", cfg.DBName, "address", cfg.Addr)
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
