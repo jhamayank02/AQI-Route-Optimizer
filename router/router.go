@@ -1,14 +1,14 @@
 package router
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/handlers"
+)
 
-func Register(r *gin.Engine) {
-
+func Register(r *gin.Engine, h *handlers.Handler) {
 	rg := r.Group("/api")
 
-	rg.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "OK",
-		})
-	})
+	rg.GET("/health", h.HealthCheck)
+	// rg.GET("/routes", handlers.GiveRoutes)
+	rg.GET("/find-routes", h.FindRoutes)
 }
