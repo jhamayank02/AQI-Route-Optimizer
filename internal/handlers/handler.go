@@ -119,3 +119,29 @@ func (h *Handler) FindRoutes(c *gin.Context) {
 		"data":    response,
 	})
 }
+
+func (h *Handler) SearchLocation(c *gin.Context) {
+	// Get lat and lng from query params
+	query := c.Query("query")
+
+	if strings.TrimSpace(query) == "" {
+		c.JSON(400, gin.H{
+			"message": "query is required",
+		})
+		return
+	}
+
+	suggestions, err := h.mapConfig.SearchLocation(query)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to search location",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "OK",
+		"data":    suggestions,
+	})
+}

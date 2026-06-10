@@ -44,10 +44,10 @@ func (app *App) Run() error {
 	// Initialize maps
 	mapApiKey := env.GetString("OPENROUTE_SERVICE_API_KEY", "", app.logger)
 	findRouteUrl := env.GetString("FIND_ROUTE_URL", "", app.logger)
-	_ = maps.NewMapConfig(app.logger, mapApiKey, findRouteUrl)
+	searchLocationUrl := env.GetString("SEARCH_LOCATION_URL", "", app.logger)
+	mapConfig := maps.NewMapConfig(app.logger, mapApiKey, findRouteUrl, searchLocationUrl)
 
 	// Initialize handlers
-	mapConfig := maps.NewMapConfig(app.logger, mapApiKey, findRouteUrl)
 	handlers := handlers.NewHandler(app.logger, mapConfig)
 
 	// Initialize gin router

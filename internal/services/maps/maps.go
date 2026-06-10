@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 )
 
 type ORSGeoJSONResponse struct {
@@ -47,22 +48,63 @@ func (e *ProviderError) Error() string {
 	return e.Message
 }
 
+type GeocodeResponse struct {
+	Type     string           `json:"type"`
+	Features []GeocodeFeature `json:"features"`
+}
+
+type GeocodeFeature struct {
+	Type       string            `json:"type"`
+	Geometry   GeocodeGeometry   `json:"geometry"`
+	Properties GeocodeProperties `json:"properties"`
+}
+
+type GeocodeGeometry struct {
+	Type        string    `json:"type"`
+	Coordinates []float64 `json:"coordinates"` // [lng, lat]
+}
+
+type GeocodeProperties struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Label      string  `json:"label"`
+	Country    string  `json:"country"`
+	CountryA   string  `json:"country_a"`
+	Region     string  `json:"region"`
+	County     string  `json:"county"`
+	Locality   string  `json:"locality"`
+	Confidence float64 `json:"confidence"`
+	Layer      string  `json:"layer"`
+}
+
+type LocationSuggestion struct {
+	Label      string  `json:"label"`
+	Name       string  `json:"name"`
+	Lat        float64 `json:"lat"`
+	Lng        float64 `json:"lng"`
+	Country    string  `json:"country"`
+	Region     string  `json:"region"`
+	Confidence float64 `json:"confidence"`
+}
+
 type Coordinates struct {
 	Lat float64
 	Lng float64
 }
 
 type MapConfig struct {
-	logger       *slog.Logger
-	apiKey       string
-	findRouteUrl string
+	logger            *slog.Logger
+	apiKey            string
+	findRouteUrl      string
+	searchLocationUrl string
 }
 
-func NewMapConfig(logger *slog.Logger, apiKey string, findRouteUrl string) *MapConfig {
+func NewMapConfig(logger *slog.Logger, apiKey string, findRouteUrl string, searchLocationUrl string) *MapConfig {
 	return &MapConfig{
-		logger:       logger,
-		apiKey:       apiKey,
-		findRouteUrl: findRouteUrl,
+		logger:            logger,
+		apiKey:            apiKey,
+		findRouteUrl:      findRouteUrl,
+		searchLocationUrl: searchLocationUrl,
 	}
 }
 
@@ -128,6 +170,56 @@ func (mc *MapConfig) FindRoutes(start Coordinates, dest Coordinates) (*RouteResp
 	}
 
 	return &result, nil
+}
+
+func (mc *MapConfig) SearchLocation(query string) ([]LocationSuggestion, error) {
+	targetUrl := fmt.Sprintf("%s?api_key=%s&text=%s", mc.searchLocationUrl, mc.apiKey, url.QueryEscape(query))
+
+	mc.logger.Info("targetUrl", "url", targetUrl)
+
+	req, err := http.NewRequest(http.MethodGet, targetUrl, nil)
+	if err != nil {
+		mc.logger.Error("failed to create request", "error", err)
+		return nil, err
+	}
+
+	client := http.Client{}
+
+	res, err := client.Do(req)
+	if err != nil {
+		mc.logger.Error("failed to send request", "error", err)
+		return nil, err
+	}
+
+	var geoResp GeocodeResponse
+	err = json.NewDecoder(res.Body).Decode(&geoResp)
+	if err != nil {
+		mc.logger.Error("failed to unmarshal response", "error", err)
+		return nil, err
+	}
+
+	fmt.Println(geoResp)
+
+	suggestions := make([]LocationSuggestion, 0, len(geoResp.Features))
+
+	for _, feature := range geoResp.Features {
+		coords := feature.Geometry.Coordinates
+		if len(coords) < 2 {
+			continue
+		}
+
+		suggestions = append(suggestions, LocationSuggestion{
+			Label:      feature.Properties.Label,
+			Name:       feature.Properties.Name,
+			Lng:        coords[0],
+			Lat:        coords[1],
+			Country:    feature.Properties.Country,
+			Region:     feature.Properties.Region,
+			Confidence: feature.Properties.Confidence,
+		})
+	}
+
+	return suggestions, nil
 }
 
 func handleORSStatus(statusCode int, body []byte) error {

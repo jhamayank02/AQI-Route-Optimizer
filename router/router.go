@@ -11,4 +11,5 @@ func Register(r *gin.Engine, h *handlers.Handler) {
 	rg.GET("/health", h.HealthCheck)
 	// rg.GET("/routes", handlers.GiveRoutes)
 	rg.GET("/find-routes", h.FindRoutes)
+	rg.GET("/search", h.SearchLocation)
 }
