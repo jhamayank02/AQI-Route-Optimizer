@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"sort"
+	"sync"
 
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/domain"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/aqi"
@@ -69,20 +70,47 @@ func (s *Service) evaluateRoute(ctx context.Context, route domain.Route) (domain
 	var total float64
 	var maxAQI float64
 
+	var wg *sync.WaitGroup
+	wg = &sync.WaitGroup{}
+	resultChan := make(chan domain.AQIResult, len(samples))
+
 	for _, coordinate := range samples {
-		aqiValue, err := s.aqiClient.GetAQI(ctx, coordinate.Lat, coordinate.Lng)
-		if err != nil {
-			return domain.EvaluatedRoute{}, err
+		wg.Add(1)
+		go func(cord domain.Coordinates) {
+			defer wg.Done()
+			aqiValue, err := s.aqiClient.GetAQI(ctx, cord.Lat, cord.Lng)
+
+			resultChan <- domain.AQIResult{
+				Sample: domain.AQISample{
+					Lat: cord.Lat,
+					Lng: cord.Lng,
+					AQI: aqiValue,
+				},
+				Error: err,
+			}
+		}(coordinate)
+	}
+
+	wg.Wait()
+	close(resultChan)
+
+	for result := range resultChan {
+
+		if result.Error != nil {
+			return domain.EvaluatedRoute{}, result.Error
 		}
 
-		total += aqiValue
-		maxAQI = math.Max(maxAQI, aqiValue)
+		aqiSamples = append(
+			aqiSamples,
+			result.Sample,
+		)
 
-		aqiSamples = append(aqiSamples, domain.AQISample{
-			Lat: coordinate.Lat,
-			Lng: coordinate.Lng,
-			AQI: aqiValue,
-		})
+		total += result.Sample.AQI
+
+		maxAQI = math.Max(
+			maxAQI,
+			result.Sample.AQI,
+		)
 	}
 
 	averageAQI := 0.0

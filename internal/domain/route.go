@@ -27,6 +27,11 @@ type AQISample struct {
 	AQI float64 `json:"aqi"`
 }
 
+type AQIResult struct {
+	Sample AQISample `json:"sample"`
+	Error  error     `json:"error"`
+}
+
 type EvaluatedRoute struct {
 	Route            Route       `json:"route"`
 	AQISamples       []AQISample `json:"aqi_samples"`
