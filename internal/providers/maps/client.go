@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/domain"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/redis"
 )
 
 type orsGeoJSONResponse struct {
@@ -73,9 +74,12 @@ type Client struct {
 	apiKey            string
 	findRouteURL      string
 	searchLocationURL string
+	redisProvider     *redis.RedisConfig
 }
 
-func NewClient(logger *slog.Logger, apiKey string, findRouteURL string, searchLocationURL string) *Client {
+const routeCacheTTL = 15 * time.Minute
+
+func NewClient(logger *slog.Logger, apiKey string, findRouteURL string, searchLocationURL string, redisProvider *redis.RedisConfig) *Client {
 	return &Client{
 		logger: logger,
 		httpClient: &http.Client{
@@ -84,10 +88,23 @@ func NewClient(logger *slog.Logger, apiKey string, findRouteURL string, searchLo
 		apiKey:            apiKey,
 		findRouteURL:      findRouteURL,
 		searchLocationURL: searchLocationURL,
+		redisProvider:     redisProvider,
 	}
 }
 
 func (c *Client) FindRoutes(ctx context.Context, start domain.Coordinates, dest domain.Coordinates) ([]domain.Route, error) {
+	var cacheKey string
+	if c.redisProvider != nil {
+		cacheKey = c.redisProvider.RouteCacheKey(start.Lat, start.Lng, dest.Lat, dest.Lng)
+		routes, err := c.redisProvider.GetRoutes(ctx, cacheKey)
+		if err == nil {
+			c.logger.Debug("using cached routes", "key", cacheKey)
+			return routes, nil
+		}
+
+		c.logger.Debug("route cache unavailable or missed", "key", cacheKey, "error", err)
+	}
+
 	payload := map[string]any{
 		"coordinates": [][]float64{
 			{start.Lng, start.Lat},
@@ -157,6 +174,12 @@ func (c *Client) FindRoutes(ctx context.Context, start domain.Coordinates, dest 
 			DurationMinutes: feature.Properties.Summary.Duration / 60,
 			Coordinates:     coordinates,
 		})
+	}
+
+	if c.redisProvider != nil && cacheKey != "" {
+		if err := c.redisProvider.SetRoutes(ctx, cacheKey, routes, routeCacheTTL); err != nil {
+			c.logger.Warn("failed to cache routes", "key", cacheKey, "error", err)
+		}
 	}
 
 	return routes, nil

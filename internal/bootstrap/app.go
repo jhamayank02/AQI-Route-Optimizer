@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	httpRouter "github.com/jhamayank02/AQI-Route-Optimizer/internal/http/router"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/aqi"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/maps"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/redis"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/services/routeplanner"
 )
 
@@ -38,11 +40,33 @@ func NewApp(cfg Config, logger *slog.Logger) App {
 }
 
 func (app *App) Run() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	redisCfg := redis.NewRedisConfig(
+		config.GetString("REDIS_ADDR", "", app.logger),
+		config.GetString("REDIS_PASS", "", app.logger),
+		config.GetInt("REDIS_DB", 0, app.logger),
+		config.GetInt("REDIS_PROTOCOL", 2, app.logger),
+		app.logger,
+	)
+	_, err := redisCfg.SetupRedisClient(ctx)
+	if err != nil {
+		app.logger.Warn("Redis unavailable; continuing without route cache", "error", err)
+	} else {
+		defer func() {
+			if err := redisCfg.Client.Close(); err != nil {
+				app.logger.Warn("failed to close Redis client", "error", err)
+			}
+		}()
+	}
+
 	mapClient := maps.NewClient(
 		app.logger,
 		config.GetString("OPENROUTE_SERVICE_API_KEY", "", app.logger),
 		config.GetString("FIND_ROUTE_URL", "", app.logger),
 		config.GetString("SEARCH_LOCATION_URL", "", app.logger),
+		redisCfg,
 	)
 
 	aqiClient := aqi.NewClient(
