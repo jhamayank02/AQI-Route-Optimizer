@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/config"
 	httpHandlers "github.com/jhamayank02/AQI-Route-Optimizer/internal/http/handlers"
@@ -54,6 +55,12 @@ func (app *App) Run() error {
 
 	engine := gin.New()
 	engine.Use(gin.Logger(), gin.Recovery())
+	engine.Use(cors.New(
+		cors.Config{
+			AllowOrigins: []string{"http://localhost:5173"},
+			AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		},
+	))
 	httpRouter.Register(engine, handler)
 
 	server := &http.Server{

@@ -1,22 +1,73 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useDebounceFn, useEventListener } from '@vueuse/core'
+import { searchLocation } from '../services/location.service';
+import type { Location } from '../services/location.service';
+import {useStore} from '../store/store'
+
+const store = useStore()
 
 const emit = defineEmits<{
-  findRoutes: [{ source: string; destination: string }]
+  findRoutes: []
 }>()
 
 const source = ref('')
 const destination = ref('')
 
+const sourceOptions = ref<Location[]>([])
+const destinationOptions = ref<Location[]>([])
+const activeDropdown = ref<'source' | 'destination' | null>(null)
+const searchBoxRef = ref<HTMLElement | null>(null)
+const selectedSource = ref<Location | null>(null)
+const selectedDestination = ref<Location | null>(null)
+
+const debounceSearch = useDebounceFn(
+  (type: 'source' | 'destination', value: string)=>{
+    searchLocationHandler(type, value)
+  },
+  500
+)
+
 const hasSource = computed(() => source.value.trim().length > 0)
 const canFindRoutes = computed(() => hasSource.value && destination.value.trim().length > 0)
+const shouldShowSourceOptions = computed(() => activeDropdown.value === 'source' && sourceOptions.value.length > 0)
+const shouldShowDestinationOptions = computed(
+  () => activeDropdown.value === 'destination' && destinationOptions.value.length > 0
+)
 
+// If source input is empty, clear destination input
 watch(source, (value) => {
   if (!value.trim()) {
     destination.value = ''
+    sourceOptions.value = []
+    destinationOptions.value = []
+    activeDropdown.value = null
+    selectedSource.value = null
+    selectedDestination.value = null
+    return
+  }
+
+  if (selectedSource.value?.label !== value) {
+    selectedSource.value = null
   }
 })
 
+watch(destination, (value) => {
+  if (!value.trim()) {
+    destinationOptions.value = []
+    selectedDestination.value = null
+    if (activeDropdown.value === 'destination') {
+      activeDropdown.value = null
+    }
+    return
+  }
+
+  if (selectedDestination.value?.label !== value) {
+    selectedDestination.value = null
+  }
+})
+
+// Handler to swap locations (source <-> destination and vice versa)
 const swapLocations = () => {
   if (!canFindRoutes.value) {
     return
@@ -32,11 +83,79 @@ const findRoutes = () => {
     return
   }
 
-  emit('findRoutes', {
-    source: source.value.trim(),
-    destination: destination.value.trim(),
-  })
+  store.setSource(selectedSource.value as Location)
+  store.setDestination(selectedDestination.value as Location)
+
+  closeDropdowns()
+  emit('findRoutes')
 }
+
+const closeDropdowns = () => {
+  activeDropdown.value = null
+}
+
+const selectLocation = (type: 'source' | 'destination', option: Location) => {
+  if (type === 'source') {
+    source.value = option.label
+    sourceOptions.value = []
+    selectedSource.value = option
+  } else {
+    destination.value = option.label
+    destinationOptions.value = []
+    selectedDestination.value = option
+  }
+
+  activeDropdown.value = null
+}
+
+const validateSelection = (type: 'source' | 'destination') => {
+  window.setTimeout(() => {
+    if (type === 'source' && source.value.trim() && !selectedSource.value) {
+      source.value = ''
+      sourceOptions.value = []
+    }
+
+    if (type === 'destination' && destination.value.trim() && !selectedDestination.value) {
+      destination.value = ''
+      destinationOptions.value = []
+    }
+  }, 150)
+}
+
+const searchLocationHandler = async (type: 'source' | 'destination', value: string) => {
+  const query = value.trim()
+
+  if (!query) {
+    if (type === 'source') {
+      sourceOptions.value = []
+    } else {
+      destinationOptions.value = []
+    }
+    activeDropdown.value = null
+    return
+  }
+
+  try {
+    const response = await searchLocation(query)
+    const options = response.data || []
+
+    if (type === 'source') {
+      sourceOptions.value = options
+    } else {
+      destinationOptions.value = options
+    }
+
+    activeDropdown.value = options.length > 0 ? type : null
+  } catch(error) {
+    console.log(error)
+  }
+}
+
+useEventListener(document, 'click', (event) => {
+  if (!searchBoxRef.value?.contains(event.target as Node)) {
+    closeDropdowns()
+  }
+})
 </script>
 
 <template>
@@ -51,11 +170,12 @@ const findRoutes = () => {
     </div>
 
     <form
+      ref="searchBoxRef"
       class="relative mt-8 w-full max-w-[610px] rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-[0_8px_26px_rgba(15,23,42,0.08)]"
       @submit.prevent="findRoutes"
     >
       <div class="space-y-5">
-        <div>
+        <div class="relative">
           <label for="source" class="mb-2 block text-sm font-bold text-slate-950">From</label>
           <div
             class="flex h-14 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 transition focus-within:border-[#2f9e52] focus-within:shadow-[0_0_0_3px_rgba(47,158,82,0.12)]"
@@ -66,6 +186,9 @@ const findRoutes = () => {
               type="text"
               placeholder="Enter starting location"
               class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[16px] font-medium text-slate-900 outline-none placeholder:text-slate-500 focus:ring-0"
+              @focus="activeDropdown = sourceOptions.length ? 'source' : null"
+              @blur="validateSelection('source')"
+              @input="debounceSearch('source', source)"
             />
             <svg
               viewBox="0 0 24 24"
@@ -79,9 +202,25 @@ const findRoutes = () => {
               <circle cx="12" cy="12" r="2.5" fill="currentColor" />
             </svg>
           </div>
+
+          <div
+            v-if="shouldShowSourceOptions"
+            class="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto overflow-x-hidden rounded-md border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+          >
+            <button
+              v-for="option in sourceOptions"
+              :key="`source-${option.lat}-${option.lng}`"
+              type="button"
+              class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+              @click="selectLocation('source', option)"
+            >
+              <span class="block text-sm font-semibold text-slate-900">{{ option.name }}</span>
+              <span class="block text-xs text-slate-500">{{ option.label }}</span>
+            </button>
+          </div>
         </div>
 
-        <div>
+        <div class="relative">
           <label for="destination" class="mb-2 block text-sm font-bold text-slate-950">To</label>
           <div
             class="flex h-14 items-center gap-3 rounded-md border bg-white px-4 transition"
@@ -98,6 +237,9 @@ const findRoutes = () => {
               placeholder="Enter destination"
               :disabled="!hasSource"
               class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[16px] font-medium text-slate-900 outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-400 focus:ring-0"
+              @focus="activeDropdown = destinationOptions.length ? 'destination' : null"
+              @blur="validateSelection('destination')"
+              @input="debounceSearch('destination', destination)"
             />
             <svg
               viewBox="0 0 24 24"
@@ -114,6 +256,22 @@ const findRoutes = () => {
               />
               <circle cx="12" cy="10" r="2.4" fill="currentColor" />
             </svg>
+          </div>
+
+          <div
+            v-if="shouldShowDestinationOptions"
+            class="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto overflow-x-hidden rounded-md border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+          >
+            <button
+              v-for="option in destinationOptions"
+              :key="`destination-${option.lat}-${option.lng}`"
+              type="button"
+              class="block w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+              @click="selectLocation('destination', option)"
+            >
+              <span class="block text-sm font-semibold text-slate-900">{{ option.name }}</span>
+              <span class="block text-xs text-slate-500">{{ option.label }}</span>
+            </button>
           </div>
         </div>
       </div>

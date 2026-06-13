@@ -1,33 +1,71 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-
-defineProps<{
-  source: string
-  destination: string
-}>()
+import { useStore } from '../store/store'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const emit = defineEmits<{
   complete: []
 }>()
 
+const store = useStore()
+const locations = computed(() => store.getLocation)
+const source = computed(() => locations.value.source)
+const destination = computed(() => locations.value.destination)
+const isLoaded = computed(() => Boolean(store.getRecommendedRoute))
+
 const progress = ref(18)
 let timer: number | undefined
+const waitingProgress = 84
 
-onMounted(() => {
-  timer = window.setInterval(() => {
-    progress.value = Math.min(progress.value + 7, 100)
-
-    if (progress.value === 100) {
-      window.clearInterval(timer)
-      window.setTimeout(() => emit('complete'), 250)
-    }
-  }, 140)
-})
-
-onUnmounted(() => {
+const stopTimer = () => {
   if (timer) {
     window.clearInterval(timer)
+    timer = undefined
   }
+}
+
+const startProgress = (target: number, step: number, delay: number, onComplete?: () => void) => {
+  stopTimer()
+  timer = window.setInterval(() => {
+    progress.value = Math.min(progress.value + step, target)
+
+    if (progress.value >= target) {
+      stopTimer()
+      onComplete?.()
+    }
+  }, delay)
+}
+
+const completeLoading = () => {
+  if (progress.value >= 100) {
+    emit('complete')
+    return
+  }
+
+  startProgress(100, 4, 60, () => {
+    window.setTimeout(() => emit('complete'), 150)
+  })
+}
+
+onMounted(() => {
+  progress.value = 18
+  startProgress(waitingProgress, 2, 140)
+
+  if (isLoaded.value) {
+    completeLoading()
+  }
+})
+
+watch(
+  isLoaded,
+  (isLoaded) => {
+    if (isLoaded) {
+      completeLoading()
+    }
+  }
+)
+
+onUnmounted(() => {
+  stopTimer()
 })
 </script>
 
@@ -51,13 +89,13 @@ onUnmounted(() => {
       Finding the best routes for you...
     </h1>
     <p class="mt-4 max-w-md text-[16px] leading-7 text-slate-700">
-      Comparing AQI, travel time, and distance between {{ source }} and {{ destination }}.
+      Comparing AQI, travel time, and distance between {{ source?.label || 'your source' }} and {{ destination?.label || 'your destination' }}.
     </p>
 
     <div class="mt-10 flex w-full max-w-[520px] items-center gap-5">
       <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
         <div
-          class="h-full rounded-full bg-[#2f9e52] transition-all duration-200"
+          class="h-full rounded-full bg-[#2f9e52] transition-all duration-150"
           :style="{ width: `${progress}%` }"
         />
       </div>

@@ -1,48 +1,109 @@
 <script setup lang="ts">
-defineProps<{
-  source: string
-  destination: string
-}>()
+import { computed, onMounted } from 'vue'
+import {useStore} from '../store/store'
+import type { RouteAnalysis } from '../services/route.service'
+import { capitalizeFirstLetter } from '../utils/utils'
+import { useToast } from 'vue-toastification'
+import { useRouter } from 'vue-router'
+
+const store = useStore()
+const toast = useToast()
+const router = useRouter()
+const locations = computed(() => store.getLocation)
+const recommendedRoute = computed(() => store.getRecommendedRoute)
+const source = computed(() => locations.value.source)
+const destination = computed(() => locations.value.destination)
+
+const getAQIClass = (aqi: number) => {
+  if (aqi < 80) return 'bg-[#2f9e52]'
+  if (aqi < 120) return 'bg-orange-400'
+  return 'bg-red-500'
+}
+
+const getRouteStyle = (route: RouteAnalysis) => {
+  if (route.is_selected) {
+    return {
+      border: 'border-[#2f9e52]',
+      color: 'text-[#2f9e52]'
+    }
+  }
+
+  if (route.average_aqi < 80) {
+    return {
+      border: 'border-emerald-200',
+      color: 'text-[#2f9e52]'
+    }
+  }
+
+  if (route.average_aqi < 120) {
+    return {
+      border: 'border-orange-200',
+      color: 'text-orange-500'
+    }
+  }
+
+  return {
+    border: 'border-red-200',
+    color: 'text-red-500'
+  }
+}
+
+const formatDistance = (distanceKm: number) => `${distanceKm.toFixed(1)} km`
+const formatDuration = (durationMinutes: number) => `${Math.round(durationMinutes)} min`
+const formatAQI = (aqi: number) => Math.round(aqi)
+
+const routes = computed(() =>
+  (recommendedRoute.value?.all_routes || []).map((route, index) => {
+    const style = getRouteStyle(route)
+
+    return {
+      index,
+      label: `Route ${index + 1}`,
+      isSelected: route.is_selected,
+      averageAQI: formatAQI(route.average_aqi),
+      maxAQI: formatAQI(route.max_aqi),
+      duration: formatDuration(route.route.duration_minutes),
+      distance: formatDistance(route.route.distance_km),
+      recommendation: route.recommendation,
+      samplingStrategy: route.sampling_strategy,
+      selectionReason: route.selection_reason,
+      border: style.border,
+      color: style.color,
+      aqiClass: getAQIClass(route.average_aqi)
+    }
+  })
+)
+
+const selectedRouteLabel = computed(() => {
+  const selectedIndex = recommendedRoute.value?.selected_route_index
+  return typeof selectedIndex === 'number' ? `Route ${selectedIndex + 1}` : 'a route'
+})
+
+const selectedRouteNote = computed(() =>
+  recommendedRoute.value?.selected_route.selection_reason ||
+  recommendedRoute.value?.selected_route.recommendation ||
+  'This route has the best balance for the selected journey.'
+)
 
 const emit = defineEmits<{
   newSearch: []
 }>()
 
-const routes = [
-  {
-    name: 'Route 1',
-    label: 'Recommended',
-    color: 'text-[#2f9e52]',
-    border: 'border-[#2f9e52]',
-    time: '45 min',
-    distance: '28.5 km',
-    aqi: 62,
-    quality: 'Good',
-    note: 'Cleaner air along the route with moderate traffic.',
-  },
-  {
-    name: 'Route 2',
-    label: '',
-    color: 'text-orange-500',
-    border: 'border-slate-200',
-    time: '48 min',
-    distance: '30.2 km',
-    aqi: 98,
-    quality: 'Moderate',
-    note: 'Slightly longer, with acceptable air quality in most areas.',
-  },
-  {
-    name: 'Route 3',
-    label: '',
-    color: 'text-red-500',
-    border: 'border-slate-200',
-    time: '40 min',
-    distance: '26.1 km',
-    aqi: 156,
-    quality: 'Unhealthy',
-    note: 'Faster, but air quality is poor across several route segments.',
-  },
-]
+onMounted(() => {
+  const hasRecommendedRoute =
+    Boolean(recommendedRoute.value?.selected_route) &&
+    (recommendedRoute.value?.all_routes?.length || 0) > 0
+
+  if (hasRecommendedRoute) {
+    return
+  }
+
+  store.clearRecommendedRoute()
+  toast.error('No recommended route found. Please search again.')
+  emit('newSearch')
+  router.replace({ name: 'home' })
+})
+
 </script>
 
 <template>
@@ -51,7 +112,7 @@ const routes = [
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-[24px] font-extrabold leading-tight text-black">Recommended Routes</h1>
-          <p class="mt-2 text-sm leading-6 text-slate-600">From {{ source }} to {{ destination }}</p>
+          <p class="mt-2 text-sm leading-6 text-slate-600">From {{ source?.label }} to {{ destination?.label }}</p>
         </div>
         <button
           type="button"
@@ -65,31 +126,31 @@ const routes = [
       <div class="mt-6 space-y-4">
         <article
           v-for="route in routes"
-          :key="route.name"
+          :key="route.index"
           class="rounded-lg border bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.06)]"
           :class="route.border"
         >
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-extrabold" :class="route.color">
-              {{ route.name }} <span v-if="route.label">({{ route.label }})</span>
+              {{ route.label }} <span v-if="route.isSelected">(Selected)</span>
             </h2>
             <span
               class="rounded-full px-3 py-1 text-xs font-bold text-white"
-              :class="
-                route.aqi < 80 ? 'bg-[#2f9e52]' : route.aqi < 120 ? 'bg-orange-400' : 'bg-red-500'
-              "
+              :class="route.aqiClass"
             >
-              {{ route.aqi }}
+              AQI {{ route.averageAQI }}
             </span>
           </div>
 
           <div class="mt-5 grid grid-cols-3 gap-3 text-sm font-semibold text-slate-800">
-            <span>{{ route.time }}</span>
+            <span>{{ route.duration }}</span>
             <span>{{ route.distance }}</span>
-            <span>{{ route.quality }}</span>
+            <span>Max AQI {{ route.maxAQI }}</span>
           </div>
 
-          <p class="mt-4 text-sm leading-6 text-slate-600">{{ route.note }}</p>
+          <p class="mt-4 text-sm leading-6 text-slate-600">
+            {{ capitalizeFirstLetter(route.selectionReason || route.recommendation) }}
+          </p>
         </article>
       </div>
     </aside>
@@ -139,8 +200,8 @@ const routes = [
             </svg>
           </div>
           <div>
-            <h2 class="text-sm font-extrabold text-slate-950">You have selected Route 1</h2>
-            <p class="mt-1 text-sm text-slate-600">This route has the best air quality with moderate travel time.</p>
+            <h2 class="text-sm font-extrabold text-slate-950">You have selected {{ selectedRouteLabel }}</h2>
+            <p class="mt-1 text-sm text-slate-600">{{ capitalizeFirstLetter(selectedRouteNote || '') }}</p>
           </div>
         </div>
       </div>
