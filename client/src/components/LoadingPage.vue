@@ -70,9 +70,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+  <main class="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center sm:px-6 sm:py-10">
     <div
-      class="relative h-36 w-36 overflow-hidden rounded-full border border-slate-200 bg-[linear-gradient(135deg,#edf2f7_0%,#f8fafc_42%,#dbeafe_43%,#f8fafc_48%,#ecfdf5_100%)] shadow-[0_8px_26px_rgba(15,23,42,0.08)]"
+      class="relative h-32 w-32 overflow-hidden rounded-full border border-slate-200 bg-[linear-gradient(135deg,#edf2f7_0%,#f8fafc_42%,#dbeafe_43%,#f8fafc_48%,#ecfdf5_100%)] shadow-[0_8px_26px_rgba(15,23,42,0.08)] sm:h-36 sm:w-36"
     >
       <svg viewBox="0 0 144 144" width="144" height="144" class="h-full w-full" fill="none" aria-hidden="true">
         <path d="M20 104 48 78 70 92 98 66 124 82" stroke="#2f9e52" stroke-linecap="round" stroke-linejoin="round" stroke-width="5" />
@@ -85,10 +85,10 @@ onUnmounted(() => {
       </svg>
     </div>
 
-    <h1 class="mt-7 text-[28px] font-extrabold leading-tight text-black sm:text-[34px]">
+    <h1 class="mt-7 text-[26px] font-extrabold leading-tight text-black sm:text-[34px]">
       Finding the best routes for you...
     </h1>
-    <p class="mt-4 max-w-md text-[16px] leading-7 text-slate-700">
+    <p class="mt-4 max-w-md text-[15px] leading-7 text-slate-700 sm:text-[16px]">
       Comparing AQI, travel time, and distance between {{ source?.label || 'your source' }} and {{ destination?.label || 'your destination' }}.
     </p>
 

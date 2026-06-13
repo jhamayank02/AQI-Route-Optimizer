@@ -159,26 +159,26 @@ useEventListener(document, 'click', (event) => {
 </script>
 
 <template>
-  <main class="flex flex-1 flex-col items-center px-6 pb-8 pt-9">
+  <main class="flex min-h-full flex-col items-center px-4 pb-6 pt-7 sm:px-6 sm:pb-8 sm:pt-9">
     <div class="text-center">
-      <h1 class="text-[28px] font-extrabold leading-tight text-black sm:text-[34px]">
+      <h1 class="text-[26px] font-extrabold leading-tight text-black sm:text-[34px]">
         Find a <span class="text-[#2f9e52]">healthier</span> route
       </h1>
-      <p class="mt-4 max-w-md text-[16px] leading-7 text-slate-800">
+      <p class="mt-3 max-w-md text-[15px] leading-7 text-slate-800 sm:mt-4 sm:text-[16px]">
         We analyze air quality along multiple routes and suggest the best one for you.
       </p>
     </div>
 
     <form
       ref="searchBoxRef"
-      class="relative mt-8 w-full max-w-[610px] rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-[0_8px_26px_rgba(15,23,42,0.08)]"
+      class="relative mt-7 w-full max-w-[610px] rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-[0_8px_26px_rgba(15,23,42,0.08)] sm:mt-8 sm:px-5 sm:py-5"
       @submit.prevent="findRoutes"
     >
       <div class="space-y-5">
         <div class="relative">
           <label for="source" class="mb-2 block text-sm font-bold text-slate-950">From</label>
           <div
-            class="flex h-14 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 transition focus-within:border-[#2f9e52] focus-within:shadow-[0_0_0_3px_rgba(47,158,82,0.12)]"
+            class="flex h-[52px] items-center gap-3 rounded-md border border-slate-200 bg-white px-3 transition focus-within:border-[#2f9e52] focus-within:shadow-[0_0_0_3px_rgba(47,158,82,0.12)] sm:h-14 sm:px-4"
           >
             <input
               id="source"
@@ -223,7 +223,7 @@ useEventListener(document, 'click', (event) => {
         <div class="relative">
           <label for="destination" class="mb-2 block text-sm font-bold text-slate-950">To</label>
           <div
-            class="flex h-14 items-center gap-3 rounded-md border bg-white px-4 transition"
+            class="flex h-[52px] items-center gap-3 rounded-md border bg-white px-3 transition sm:h-14 sm:px-4"
             :class="
               hasSource
                 ? 'border-slate-200 focus-within:border-red-400 focus-within:shadow-[0_0_0_3px_rgba(239,68,68,0.10)]'
@@ -296,7 +296,7 @@ useEventListener(document, 'click', (event) => {
 
       <button
         type="submit"
-        class="mt-6 h-14 w-full rounded-md bg-[#2f9e52] text-[16px] font-bold text-white shadow-[0_8px_20px_rgba(47,158,82,0.22)] transition hover:bg-[#278846] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+        class="mt-5 h-[52px] w-full rounded-md bg-[#2f9e52] text-[16px] font-bold text-white shadow-[0_8px_20px_rgba(47,158,82,0.22)] transition hover:bg-[#278846] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none sm:mt-6 sm:h-14"
         :disabled="!canFindRoutes"
       >
         Find Routes
@@ -304,7 +304,7 @@ useEventListener(document, 'click', (event) => {
     </form>
 
     <div
-      class="mt-auto grid w-full max-w-[860px] grid-cols-1 gap-4 border-t border-slate-200 pt-6 text-sm font-medium text-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-slate-200"
+      class="mt-8 grid w-full max-w-[860px] grid-cols-1 gap-4 border-t border-slate-200 pt-5 text-sm font-medium text-slate-700 sm:mt-auto sm:grid-cols-3 sm:divide-x sm:divide-slate-200 sm:pt-6"
     >
       <div class="flex items-center justify-center gap-3">
         <svg viewBox="0 0 24 24" width="24" height="24" class="h-6 w-6 text-[#2f9e52]" fill="none" aria-hidden="true">

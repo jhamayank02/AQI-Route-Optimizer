@@ -21,11 +21,11 @@ const handleNavClick = (link: string) => {
 </script>
 
 <template>
-  <section class="h-screen overflow-hidden bg-[#f3f6f8] px-5 py-7 text-slate-950">
+  <section class="h-screen overflow-hidden bg-white text-slate-950 sm:bg-[#f3f6f8] sm:px-5 sm:py-7">
     <div
-      class="mx-auto flex h-full min-h-0 max-w-[960px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.10)]">
-      <header class="flex shrink-0 items-center justify-between border-b border-slate-200 px-8 py-5">
-        <RouterLink to="/" class="flex items-center gap-3 text-left text-lg font-bold" @click="handleNavClick('/')">
+      class="mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden bg-white sm:max-w-[960px] sm:rounded-lg sm:border sm:border-slate-200 sm:shadow-[0_12px_36px_rgba(15,23,42,0.10)]">
+      <header class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-8 sm:py-5">
+        <RouterLink to="/" class="flex min-w-0 items-center gap-3 text-left text-base font-bold sm:text-lg" @click="handleNavClick('/')">
           <span class="relative flex h-7 w-7 items-center justify-center">
             <svg viewBox="0 0 32 32" width="28" height="28" class="h-7 w-7" fill="none" aria-hidden="true">
               <path
@@ -35,7 +35,7 @@ const handleNavClick = (link: string) => {
                 stroke-width="2" />
             </svg>
           </span>
-          <span>AQI <span class="text-[#2f9e52]">Route</span> Optimizer</span>
+          <span class="min-w-0 truncate">AQI <span class="text-[#2f9e52]">Route</span> Optimizer</span>
         </RouterLink>
 
         <nav class="hidden items-center gap-9 text-sm font-medium text-slate-800 sm:flex">

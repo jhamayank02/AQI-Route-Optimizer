@@ -154,10 +154,10 @@ onMounted(() => {
 
 <template>
   <main class="grid min-h-full grid-cols-1 lg:grid-cols-[320px_1fr]">
-    <aside class="border-b border-slate-200 bg-white px-6 py-6 lg:border-b-0 lg:border-r">
+    <aside class="border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:border-b-0 lg:border-r">
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h1 class="text-[24px] font-extrabold leading-tight text-black">Recommended Routes</h1>
+          <h1 class="text-[22px] font-extrabold leading-tight text-black sm:text-[24px]">Recommended Routes</h1>
           <p class="mt-2 text-sm leading-6 text-slate-600">From {{ source?.label }} to {{ destination?.label }}</p>
         </div>
         <button
@@ -169,11 +169,11 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="mt-6 space-y-4">
+      <div class="mt-5 grid gap-3 sm:mt-6 sm:gap-4">
         <article
           v-for="route in routes"
           :key="route.index"
-          class="rounded-lg border bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.06)]"
+          class="rounded-lg border bg-white p-3 shadow-[0_6px_18px_rgba(15,23,42,0.06)] sm:p-4"
           :class="route.border"
         >
           <div class="flex items-center justify-between gap-3">
@@ -188,7 +188,7 @@ onMounted(() => {
             </span>
           </div>
 
-          <div class="mt-5 grid grid-cols-3 gap-3 text-sm font-semibold text-slate-800">
+          <div class="mt-4 grid grid-cols-3 gap-2 text-sm font-semibold text-slate-800 sm:mt-5 sm:gap-3">
             <span>{{ route.duration }}</span>
             <span>{{ route.distance }}</span>
             <span>Max AQI {{ route.maxAQI }}</span>
@@ -201,7 +201,7 @@ onMounted(() => {
       </div>
     </aside>
 
-    <section class="relative min-h-[500px] bg-[#edf3ee] lg:min-h-full">
+    <section class="relative min-h-[430px] bg-[#edf3ee] sm:min-h-[500px] lg:min-h-full">
       <LMap
         class="absolute inset-0 z-0 h-full w-full"
         :zoom="12"
@@ -264,17 +264,17 @@ onMounted(() => {
       </LMap>
 
       <div
-        class="absolute bottom-6 left-6 right-6 z-[400] rounded-lg border border-slate-200 bg-white/95 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur"
+        class="absolute bottom-4 left-4 right-4 z-[400] rounded-lg border border-slate-200 bg-white/95 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:px-5 sm:py-4"
       >
-        <div class="flex items-center gap-4">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#2f9e52]">
+        <div class="flex items-center gap-3 sm:gap-4">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#2f9e52] sm:h-10 sm:w-10">
             <svg viewBox="0 0 24 24" width="22" height="22" class="h-[22px] w-[22px]" fill="none" aria-hidden="true">
               <path d="M5 19 19 5M19 5c-5.9.2-10.5 2.9-12.4 7-1 2.2-.9 4.4.1 5.7 1.3 1 3.5 1.1 5.7.1 4.1-1.9 6.8-6.5 7-12.4Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
             </svg>
           </div>
           <div>
             <h2 class="text-sm font-extrabold text-slate-950">You have selected {{ selectedRouteLabel }}</h2>
-            <p class="mt-1 text-sm text-slate-600">{{ capitalizeFirstLetter(selectedRouteNote || '') }}</p>
+            <p class="mt-1 line-clamp-3 text-sm text-slate-600">{{ capitalizeFirstLetter(selectedRouteNote || '') }}</p>
           </div>
         </div>
       </div>
