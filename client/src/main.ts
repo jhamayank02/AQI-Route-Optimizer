@@ -5,6 +5,7 @@ import router from './router/router.ts'
 import './index.css'
 import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import 'leaflet/dist/leaflet.css'
 
 const app = createApp(App)
 

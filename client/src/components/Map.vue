@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { LCircleMarker, LMap, LPolyline, LPopup, LTileLayer } from '@vue-leaflet/vue-leaflet'
 import {useStore} from '../store/store'
 import type { RouteAnalysis } from '../services/route.service'
 import { capitalizeFirstLetter } from '../utils/utils'
@@ -74,6 +75,51 @@ const routes = computed(() =>
   })
 )
 
+type LatLngTuple = [number, number]
+
+const routeColors = ['#2f9e52', '#fb923c', '#ef4444', '#2563eb', '#7c3aed']
+
+const defaultCenter: LatLngTuple = [20.5937, 78.9629]
+
+const mapCenter = computed<LatLngTuple>(() => {
+  if (source.value) {
+    return [source.value.lat, source.value.lng]
+  }
+
+  return defaultCenter
+})
+
+const mapBounds = computed<LatLngTuple[] | undefined>(() => {
+  const routeCoordinates =
+    recommendedRoute.value?.all_routes.flatMap((route) =>
+      route.route.coordinates.map((coordinate) => [coordinate.lat, coordinate.lng] as LatLngTuple)
+    ) || []
+
+  const endpointCoordinates = [source.value, destination.value]
+    .filter(Boolean)
+    .map((location) => [location!.lat, location!.lng] as LatLngTuple)
+
+  const bounds = [...routeCoordinates, ...endpointCoordinates]
+
+  return bounds.length > 1 ? bounds : undefined
+})
+
+const routePolylines = computed(() =>
+  (recommendedRoute.value?.all_routes || [])
+    .map((route, index) => ({
+      index,
+      label: `Route ${index + 1}`,
+      isSelected: route.is_selected,
+      color: routeColors[index % routeColors.length],
+      latLngs: route.route.coordinates.map((coordinate) => [coordinate.lat, coordinate.lng] as LatLngTuple)
+    }))
+    .filter((route) => route.latLngs.length > 1)
+)
+
+const selectedAqiSamples = computed(() =>
+  recommendedRoute.value?.selected_route.aqi_samples || []
+)
+
 const selectedRouteLabel = computed(() => {
   const selectedIndex = recommendedRoute.value?.selected_route_index
   return typeof selectedIndex === 'number' ? `Route ${selectedIndex + 1}` : 'a route'
@@ -107,7 +153,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[320px_1fr]">
+  <main class="grid min-h-full grid-cols-1 lg:grid-cols-[320px_1fr]">
     <aside class="border-b border-slate-200 bg-white px-6 py-6 lg:border-b-0 lg:border-r">
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -155,43 +201,70 @@ onMounted(() => {
       </div>
     </aside>
 
-    <section class="relative min-h-[500px] bg-[#edf3ee]">
+    <section class="relative min-h-[500px] bg-[#edf3ee] lg:min-h-full">
+      <LMap
+        class="absolute inset-0 z-0 h-full w-full"
+        :zoom="12"
+        :center="mapCenter"
+        :bounds="mapBounds"
+        :use-global-leaflet="false"
+      >
+        <LTileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          layer-type="base"
+          name="OpenStreetMap"
+          attribution="&copy; OpenStreetMap contributors"
+        />
+
+        <LPolyline
+          v-for="route in routePolylines"
+          :key="route.index"
+          :lat-lngs="route.latLngs"
+          :color="route.color"
+          :weight="route.isSelected ? 7 : 5"
+          :opacity="route.isSelected ? 0.95 : 0.55"
+        >
+          <LPopup>{{ route.label }}{{ route.isSelected ? ' (Selected)' : '' }}</LPopup>
+        </LPolyline>
+
+        <LCircleMarker
+          v-if="source"
+          :lat-lng="[source.lat, source.lng]"
+          :radius="9"
+          color="#047857"
+          fill-color="#2f9e52"
+          :fill-opacity="1"
+        >
+          <LPopup>Source: {{ source.label }}</LPopup>
+        </LCircleMarker>
+
+        <LCircleMarker
+          v-if="destination"
+          :lat-lng="[destination.lat, destination.lng]"
+          :radius="9"
+          color="#b91c1c"
+          fill-color="#ef4444"
+          :fill-opacity="1"
+        >
+          <LPopup>Destination: {{ destination.label }}</LPopup>
+        </LCircleMarker>
+
+        <LCircleMarker
+          v-for="sample in selectedAqiSamples"
+          :key="`${sample.lat}-${sample.lng}-${sample.aqi}`"
+          :lat-lng="[sample.lat, sample.lng]"
+          :radius="5"
+          color="#ffffff"
+          :weight="1"
+          :fill-color="sample.aqi < 80 ? '#2f9e52' : sample.aqi < 120 ? '#fb923c' : '#ef4444'"
+          :fill-opacity="0.9"
+        >
+          <LPopup>AQI {{ formatAQI(sample.aqi) }}</LPopup>
+        </LCircleMarker>
+      </LMap>
+
       <div
-        class="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,0.18)_1px,transparent_1px),linear-gradient(rgba(148,163,184,0.18)_1px,transparent_1px)] bg-[size:56px_56px]"
-      />
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_72%_22%,rgba(186,230,253,0.65),transparent_22%),radial-gradient(circle_at_64%_58%,rgba(187,247,208,0.55),transparent_28%)]" />
-
-      <svg viewBox="0 0 720 460" class="absolute inset-0 h-full w-full" fill="none" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M70 145 C160 105 210 70 288 95 S388 155 468 130 610 92 665 62" stroke="#2f9e52" stroke-linecap="round" stroke-width="7" />
-        <path d="M70 145 C155 180 230 172 300 215 S440 250 510 292 616 300 665 350" stroke="#fb923c" stroke-linecap="round" stroke-width="7" />
-        <path d="M70 145 C125 240 218 225 274 300 S398 330 468 342 585 376 665 350" stroke="#ef4444" stroke-linecap="round" stroke-width="7" />
-      </svg>
-
-      <div class="absolute left-[8%] top-[26%]">
-        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[#2f9e52] text-white shadow-lg shadow-emerald-700/20">
-          <svg viewBox="0 0 24 24" width="24" height="24" class="h-6 w-6" fill="none" aria-hidden="true">
-            <path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" stroke="currentColor" stroke-width="2" />
-            <circle cx="12" cy="10" r="2.4" fill="currentColor" />
-          </svg>
-        </div>
-      </div>
-
-      <div class="absolute bottom-[20%] right-[7%]">
-        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-700/20">
-          <svg viewBox="0 0 24 24" width="24" height="24" class="h-6 w-6" fill="none" aria-hidden="true">
-            <path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" stroke="currentColor" stroke-width="2" />
-            <circle cx="12" cy="10" r="2.4" fill="currentColor" />
-          </svg>
-        </div>
-      </div>
-
-      <div class="absolute right-5 top-5 overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)]">
-        <button type="button" class="block h-10 w-10 border-b border-slate-200 text-xl font-bold text-slate-700">+</button>
-        <button type="button" class="block h-10 w-10 text-xl font-bold text-slate-700">-</button>
-      </div>
-
-      <div
-        class="absolute bottom-6 left-6 right-6 rounded-lg border border-slate-200 bg-white/95 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur"
+        class="absolute bottom-6 left-6 right-6 z-[400] rounded-lg border border-slate-200 bg-white/95 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur"
       >
         <div class="flex items-center gap-4">
           <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#2f9e52]">

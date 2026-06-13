@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import SearchBox from './SearchBox.vue';
 import LoadingPage from './LoadingPage.vue';
 import { findRecommendedRoute, type RecommendedRoute } from '@/services/route.service';
@@ -48,6 +48,15 @@ const newSearch = () => {
 const showResults = () => {
     state.value = 'results'
 }
+
+watch(
+    () => store.getRecommendedRoute,
+    (recommendedRoute) => {
+        if (!recommendedRoute && state.value === 'results') {
+            state.value = 'search'
+        }
+    }
+)
 
 </script>
 

@@ -1,18 +1,31 @@
 <script setup lang="ts">
+import { useStore } from './store/store'
+
+const store = useStore()
+
 const navItems = [
   { link: '/', label: 'Home' },
   { link: '/about', label: 'About' },
   { link: '/how-it-works', label: 'How it works' }
 ]
 
+const handleNavClick = (link: string) => {
+  if (link !== '/') {
+    return
+  }
+
+  store.clearLocation()
+  store.clearRecommendedRoute()
+}
+
 </script>
 
 <template>
-  <section class="min-h-screen bg-[#f3f6f8] px-5 py-7 text-slate-950">
+  <section class="h-screen overflow-hidden bg-[#f3f6f8] px-5 py-7 text-slate-950">
     <div
-      class="mx-auto flex min-h-[640px] max-w-[960px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.10)]">
-      <header class="flex items-center justify-between border-b border-slate-200 px-8 py-5">
-        <RouterLink to="/" class="flex items-center gap-3 text-left text-lg font-bold">
+      class="mx-auto flex h-full min-h-0 max-w-[960px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.10)]">
+      <header class="flex shrink-0 items-center justify-between border-b border-slate-200 px-8 py-5">
+        <RouterLink to="/" class="flex items-center gap-3 text-left text-lg font-bold" @click="handleNavClick('/')">
           <span class="relative flex h-7 w-7 items-center justify-center">
             <svg viewBox="0 0 32 32" width="28" height="28" class="h-7 w-7" fill="none" aria-hidden="true">
               <path
@@ -26,12 +39,14 @@ const navItems = [
         </RouterLink>
 
         <nav class="hidden items-center gap-9 text-sm font-medium text-slate-800 sm:flex">
-          <RouterLink v-for="item in navItems" :key="item.link" :to="item.link">
+          <RouterLink v-for="item in navItems" :key="item.link" :to="item.link" @click="handleNavClick(item.link)">
             {{ item.label }}
           </RouterLink>
         </nav>
       </header>
-      <RouterView />
+      <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <RouterView />
+      </div>
     </div>
   </section>
 </template>
