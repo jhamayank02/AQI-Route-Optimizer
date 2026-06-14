@@ -29,7 +29,10 @@ const debounceSearch = useDebounceFn(
 )
 
 const hasSource = computed(() => source.value.trim().length > 0)
-const canFindRoutes = computed(() => hasSource.value && destination.value.trim().length > 0)
+const hasDestination = computed(() => destination.value.trim().length > 0)
+const hasSelectedLocations = computed(() => selectedSource.value !== null && selectedDestination.value !== null)
+const canSwapLocations = computed(() => hasSelectedLocations.value)
+const canFindRoutes = computed(() => hasSource.value && hasDestination.value && hasSelectedLocations.value)
 const shouldShowSourceOptions = computed(() => activeDropdown.value === 'source' && sourceOptions.value.length > 0)
 const shouldShowDestinationOptions = computed(
   () => activeDropdown.value === 'destination' && destinationOptions.value.length > 0
@@ -69,13 +72,21 @@ watch(destination, (value) => {
 
 // Handler to swap locations (source <-> destination and vice versa)
 const swapLocations = () => {
-  if (!canFindRoutes.value) {
+  if (!canSwapLocations.value) {
     return
   }
 
   const currentSource = source.value
+  const currentSelectedSource = selectedSource.value
+
   source.value = destination.value
   destination.value = currentSource
+  selectedSource.value = selectedDestination.value
+  selectedDestination.value = currentSelectedSource
+
+  sourceOptions.value = []
+  destinationOptions.value = []
+  closeDropdowns()
 }
 
 const findRoutes = () => {
@@ -279,7 +290,7 @@ useEventListener(document, 'click', (event) => {
       <button
         type="button"
         class="absolute right-[-45px] top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_5px_16px_rgba(15,23,42,0.14)] transition hover:border-[#2f9e52] hover:text-[#2f9e52] disabled:cursor-not-allowed disabled:opacity-45 sm:flex"
-        :disabled="!canFindRoutes"
+        :disabled="!canSwapLocations"
         aria-label="Swap source and destination"
         @click="swapLocations"
       >
