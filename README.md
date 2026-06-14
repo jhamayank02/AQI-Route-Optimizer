@@ -20,9 +20,6 @@ This project tries to answer a more human question:
 - Scores every route using AQI and travel duration.
 - Selects the route with the best combined score.
 - Shows the selected route and AQI details in the client.
-- Caches route responses through Redis when Redis is available.
-- Uses Redis-backed rate limiting on the heavier search and route recommendation endpoints.
-- Recovers from unexpected panics in HTTP requests and AQI worker goroutines, logs the details, and returns a safe internal-server-error response.
 
 ## Screenshots
 
@@ -184,6 +181,9 @@ The scoring is intentionally simple and readable. It penalizes both higher AQI a
 - Environment-based configuration instead of hard-coded secrets.
 - Docker multi-stage builds for smaller production images.
 - Nginx proxying in the client container, so the frontend can call `/api` in production.
+- Caches route responses through Redis when Redis is available.
+- Uses Redis-backed rate limiting on the heavier search and route recommendation endpoints.
+- Recovers from unexpected panics in HTTP requests and AQI worker goroutines, logs the details, and returns a safe internal-server-error response.
 
 ## Environment Variables
 
