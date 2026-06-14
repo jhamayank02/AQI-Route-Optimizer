@@ -78,6 +78,23 @@ func (s *Service) evaluateRoute(ctx context.Context, route domain.Route) (domain
 		wg.Add(1)
 		go func(cord domain.Coordinates) {
 			defer wg.Done()
+			resultSent := false
+			defer func() {
+				if rec := recover(); rec != nil {
+					s.logger.Error(
+						"panic recovered while fetching AQI sample",
+						"error", rec,
+						"lat", cord.Lat,
+						"lng", cord.Lng,
+					)
+					if !resultSent {
+						resultChan <- domain.AQIResult{
+							Error: fmt.Errorf("internal server error"),
+						}
+					}
+				}
+			}()
+
 			aqiValue, err := s.aqiClient.GetAQI(ctx, cord.Lat, cord.Lng)
 
 			resultChan <- domain.AQIResult{
@@ -88,6 +105,7 @@ func (s *Service) evaluateRoute(ctx context.Context, route domain.Route) (domain
 				},
 				Error: err,
 			}
+			resultSent = true
 		}(coordinate)
 	}
 
