@@ -78,7 +78,7 @@ func (app *App) Run() error {
 	planner := routeplanner.NewService(app.logger, mapClient, aqiClient)
 	handler := httpHandlers.NewHandler(app.logger, planner, mapClient)
 
-	middleware := middlewares.NewMiddlewareConfig(app.logger)
+	middleware := middlewares.NewMiddlewareConfig(app.logger, redisCfg)
 
 	engine := gin.New()
 	engine.Use(gin.Logger(), middleware.RecoveryMiddleware())
@@ -88,7 +88,7 @@ func (app *App) Run() error {
 			AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		},
 	))
-	httpRouter.Register(engine, handler)
+	httpRouter.Register(engine, handler, middleware)
 
 	server := &http.Server{
 		Addr:              app.config.Addr,
