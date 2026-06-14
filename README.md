@@ -337,11 +337,3 @@ Example response shape:
   }
 }
 ```
-
-## Notes For Future Work
-
-- Add unit tests around the route scoring and sampling logic.
-- Add request validation with clearer API errors.
-- Persist searches or historical AQI snapshots.
-- Let users choose preferences, such as "cleanest route" vs "fastest route".
-- Improve the scoring model with distance, AQI severity bands, or user health sensitivity.
