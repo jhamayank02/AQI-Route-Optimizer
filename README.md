@@ -21,6 +21,8 @@ This project tries to answer a more human question:
 - Selects the route with the best combined score.
 - Shows the selected route and AQI details in the client.
 - Caches route responses through Redis when Redis is available.
+- Uses Redis-backed rate limiting on the heavier search and route recommendation endpoints.
+- Recovers from unexpected panics in HTTP requests and AQI worker goroutines, logs the details, and returns a safe internal-server-error response.
 
 ## Screenshots
 
@@ -67,7 +69,7 @@ Add screenshots here once the UI is ready to show.
 - `slog` structured logging
 - OpenRouteService API
 - Open-Meteo Air Quality API
-- Redis for optional route caching
+- Redis for optional route caching and API rate limiting
 - Docker multi-stage build
 
 ### Infrastructure
@@ -174,7 +176,9 @@ The scoring is intentionally simple and readable. It penalizes both higher AQI a
 - Context-aware HTTP requests on the server.
 - HTTP client timeouts for external API calls.
 - Structured logging with Go's `slog`.
-- Redis caching is optional; the app still runs if Redis is unavailable.
+- Redis caching and rate limiting are optional; the app still runs if Redis is unavailable.
+- Request-level panic recovery keeps the API from crashing on unexpected handler failures.
+- AQI sampling goroutines recover from panics and report a generic internal error while logging the real failure server-side.
 - Concurrent AQI lookups for sampled route points.
 - Typed frontend services and state with TypeScript and Pinia.
 - Environment-based configuration instead of hard-coded secrets.
