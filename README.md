@@ -21,6 +21,10 @@ This project tries to answer a more human question:
 - Selects the route with the best combined score.
 - Shows the selected route and AQI details in the client.
 
+## Architecture
+
+<img width="1457" height="601" alt="AQI Route Optimizer" src="https://github.com/user-attachments/assets/7708651b-8775-4334-a29a-7cc6745ffd9b" />
+
 ## Screenshots
 
 Add screenshots here once the UI is ready to show.
