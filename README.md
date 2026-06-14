@@ -30,25 +30,21 @@ Add screenshots here once the UI is ready to show.
 
 <!-- Screenshot placeholder: add an image of the search screen here. -->
 
-```md
-![Home search screen](docs/screenshots/home-search.png)
-```
+<img width="1355" height="885" alt="Screenshot 2026-06-13 201908" src="https://github.com/user-attachments/assets/ffe8e159-9daf-4098-8337-76211bff12c0" />
+<img width="1328" height="877" alt="Screenshot 2026-06-13 201933" src="https://github.com/user-attachments/assets/02f24ad6-c3b3-4085-b785-cb32c45cee9d" />
 
 ### Route Results
 
 <!-- Screenshot placeholder: add an image of the map and recommended route here. -->
 
-```md
-![Route results screen](docs/screenshots/route-results.png)
-```
+<img width="1145" height="887" alt="Screenshot 2026-06-13 202038" src="https://github.com/user-attachments/assets/813063d7-d21f-4680-8a5d-a2d118aaec8d" />
+
 
 ### How It Works
 
 <!-- Screenshot placeholder: add an image of the explanation page here. -->
 
-```md
-![How it works screen](docs/screenshots/how-it-works.png)
-```
+<img width="1054" height="888" alt="Screenshot 2026-06-13 202115" src="https://github.com/user-attachments/assets/592d3197-8c31-4142-9962-6f136eeecfa0" />
 
 ## Tech Stack
 
