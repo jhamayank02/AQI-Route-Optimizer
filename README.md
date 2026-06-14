@@ -12,8 +12,6 @@ This project tries to answer a more human question:
 
 > If two routes get me there, which one is easier on my lungs?
 
-It is especially useful as a portfolio project because it touches several real-world concerns at once: external APIs, route geometry, AQI sampling, ranking logic, caching, typed frontend state, and Dockerized deployment.
-
 ## What It Does
 
 - Searches places from free-text input.
