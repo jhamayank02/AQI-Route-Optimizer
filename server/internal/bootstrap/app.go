@@ -11,6 +11,7 @@ import (
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/config"
 	httpHandlers "github.com/jhamayank02/AQI-Route-Optimizer/internal/http/handlers"
 	httpRouter "github.com/jhamayank02/AQI-Route-Optimizer/internal/http/router"
+	"github.com/jhamayank02/AQI-Route-Optimizer/internal/middlewares"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/aqi"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/maps"
 	"github.com/jhamayank02/AQI-Route-Optimizer/internal/providers/redis"
@@ -77,8 +78,10 @@ func (app *App) Run() error {
 	planner := routeplanner.NewService(app.logger, mapClient, aqiClient)
 	handler := httpHandlers.NewHandler(app.logger, planner, mapClient)
 
+	middleware := middlewares.NewMiddlewareConfig(app.logger)
+
 	engine := gin.New()
-	engine.Use(gin.Logger(), gin.Recovery())
+	engine.Use(gin.Logger(), middleware.RecoveryMiddleware())
 	engine.Use(cors.New(
 		cors.Config{
 			AllowOrigins: []string{"http://localhost:5173"},
